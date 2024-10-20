@@ -1,101 +1,114 @@
-import Image from "next/image";
+"use client"
+
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import QrCode from "qrcode"
+
+import Image from "next/image"
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "@/components/ui/form"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
+import { useState, useRef } from "react"
+
+
+const formSchema = z.object({
+  url: z.string().url(),
+});
+
+const SIZE = 500;
+
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const imageRef = useRef(null);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      url: ''
+    }
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+
+  const onSubmit = async (values: z.infer<typeof formSchema>): Promise<void> => {
+    const { url } = values;
+    const qrCodeDataurl = await QrCode.toDataURL(url, {
+      width: SIZE
+    });
+    setQrCodeData(qrCodeDataurl);
+  };
+
+  const handleCopyImage = () => {
+    if (!!imageRef.current) {
+      const canvas: HTMLCanvasElement = document.createElement('canvas');
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(imageRef.current, 0, 0, SIZE, SIZE);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            console.log(blob);
+            navigator.clipboard.write([
+              new ClipboardItem({
+                'image/png': blob
+              })
+            ]);
+          }
+        }, 'image/png');
+      }
+    }
+  }
+
+  return (
+    <main className="flex min-h-screen flex-col items-center p-24">
+      <Form {...form}>
+        <form
+          className={cn("w-1/2 flex gap-3")}
+          onSubmit={form.handleSubmit(onSubmit)}
         >
+          <FormField name='url' control={form.control} render={({ field }) => (
+            <FormItem className={cn("flex-1")}>
+              <Input {...field} placeholder='Enter URL' type='url' />
+              <FormMessage />
+            </FormItem>
+
+          )} />
+
+          <Button type="submit" className={cn("bg-green-600")}>
+            Generate QrCode
+          </Button>
+        </form>
+      </Form>
+
+      {qrCodeData && (
+        <>
           <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+            ref={imageRef}
+            src={qrCodeData}
+            alt="Generated QR Code"
+            width={SIZE}
+            height={SIZE}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <div className={cn('flex gap-5')}>
+            <a href={qrCodeData} download className={cn('bg-sky-500 px-4 py-2 rounded text-white')}>
+              Download QrCode
+            </a>
+
+            <Button onClick={handleCopyImage} className={cn('bg-green-600 py-3 px-4 rounded text-white')}>
+              Copy Image
+            </Button>
+          </div>
+        </>
+      )}
+
+    </main>
   );
 }
